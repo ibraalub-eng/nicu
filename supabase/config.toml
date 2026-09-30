@@ -1,0 +1,5 @@
+project_id = "rpyuewupupkjqvzehqlz"
+
+[functions.new-user]
+# الدالة تتأكد من صلاحية المتصل JSONWebToken بنفسها
+verify_jwt = true

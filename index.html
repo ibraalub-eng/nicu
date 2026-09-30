@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>نموذج تسجيل المستفيدين - وحدة العناية المركزة لحديثي الولادة (NICU)</title>
+  <meta name="description" content="نموذج إلكتروني لجمع بيانات المرضى والمستفيدين من خدمات وحدة العناية المركزة لحديثي الولادة">
+  <meta name="theme-color" content="#0b7285">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b7285'/%3E%3Ctext x='32' y='44' font-family='Arial,sans-serif' font-size='32' font-weight='700' fill='white' text-anchor='middle'%3EN%3C/text%3E%3C/svg%3E">
+  <meta name="referrer" content="no-referrer">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap">
+  <link rel="stylesheet" href="css/styles.css?v=43">
+</head>
+<body>
+
+<!-- ==================== شاشة الدخول ==================== -->
+<div class="auth-screen" id="authScreen">    <div class="auth-card">
+      <button type="button" class="btn btn-light theme-btn-auth" id="btnThemeAuth" aria-label="تبديل الوضع الليلي/النهاري" title="الوضع: تلقائي (حسب الجهاز)">☾ تلقائي</button>
+    <div class="auth-brand">
+      <span class="brand-mark" aria-hidden="true">NICU</span>
+      <h1>وحدة العناية المركزة لحديثي الولادة</h1>
+      <p>سجّل الدخول لإدخال بيانات المستفيدين</p>
+    </div>
+
+    <div class="alert alert-error" id="authAlert" role="alert" hidden></div>
+
+    <form id="loginForm" class="auth-form" novalidate>
+      <div class="field">
+        <label for="loginEmpId">اسم المستخدم</label>
+        <input type="text" id="loginEmpId" autocomplete="username" dir="ltr"
+               placeholder="sara.ahmed أو 402219876">
+        <small class="hint" id="loginEmailPreview" hidden>يُبنى بريدك: اسم-المستخدم@كود المنظمة.ps</small>
+        <small class="err" id="loginEmpIdErr" hidden></small>
+      </div>
+      <div class="field" id="loginCodeField">
+        <label for="loginOrgCode" id="loginOrgCodeLabel" hidden>كود المنظمة</label>
+        <input type="text" id="loginOrgCode" autocomplete="off" dir="ltr" placeholder="pfbs" hidden>
+        <select id="loginOrgCodeSel" hidden aria-label="اختر كود المنظمة"></select>
+        <small class="hint" id="loginOrgCodeNote"></small>
+      </div>
+      <div class="field">
+        <label for="loginPassword">كلمة المرور</label>
+        <input type="password" id="loginPassword" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="btnLogin">دخول</button>
+      <p class="auth-note">
+        حسابات المستخدمين تُنشأ من قبل مدير النظام فقط.
+        إذا لم يكن لديك حساب، تواصل معه.
+      </p>
+    </form>
+  </div>
+</div>
+
+<!-- ==================== التطبيق ==================== -->
+<div id="app" hidden>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="brand">
+<span class="brand-mark" aria-hidden="true">
+        <img src="" alt="" id="headerLogo" hidden>
+        <span id="brandFallback">NICU</span>
+      </span>
+        <div class="brand-text">
+          <h1>وحدة العناية المركزة لحديثي الولادة</h1>
+          <p>نموذج تسجيل بيانات المرضى والمستفيدين</p>
+        </div>
+      </div>
+
+      <div class="header-tools">
+        <!-- (023) مبدّل المنظمات: لمدير النظام (super_admin) فقط — يملؤه
+             populateOrgSwitcher ويظهر مع وجود منظمات أخرى؛ لغيره hidden دائم -->
+        <select id="orgSwitcher" class="org-switch" aria-label="عرض بيانات منظمة (مدير النظام فقط)"
+                hidden>
+          <option value="">منظمتي</option>
+        </select>
+        <div class="user-chip" id="userChip">
+          <span class="user-name" id="userName">—</span>
+          <span class="role-tag" id="userRole">—</span>
+          <span class="org-tag" id="userOrg" hidden></span>
+        </div>
+        <button type="button" class="btn btn-ghost" id="btnTheme" aria-label="تبديل الوضع الليلي/النهاري" title="الوضع: تلقائي (حسب الجهاز)">☾ تلقائي</button>
+        <button type="button" class="btn btn-ghost" id="btnLogout">خروج</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ---------- شريط التبويبات: يقسّم الشاشة إلى أقسام بدل تمرير طويل ---------- -->
+  <nav class="tabbar" role="tablist" aria-label="أقسام التطبيق">
+    <button type="button" class="tab is-active" id="tabForm" role="tab"
+            aria-selected="true" aria-controls="paneForm">
+      <span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>
+      بيانات مستفيد
+    </button>
+    <button type="button" class="tab" id="tabRecords" role="tab"
+            aria-selected="false" aria-controls="paneRecords" tabindex="-1">
+      <span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6"/><path d="M9 12h6M9 16h4"/></svg></span>
+      السجلات
+      <span class="tab-count" id="tabCount">0</span>
+    </button>
+    <button type="button" class="tab" id="tabStats" role="tab"
+            aria-selected="false" aria-controls="paneStats" tabindex="-1" hidden>
+      <span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V11M10 20V5M15 20v-6M20 20V3"/></svg></span>
+      الإحصاءات
+    </button>
+    <button type="button" class="tab" id="tabAdmin" role="tab"
+            aria-selected="false" aria-controls="paneAdmin" tabindex="-1" hidden>
+      <span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+      الإدارة
+    </button>
+  </nav>
+
+  <main class="container app-main">
+
+    <div class="alert alert-error" id="netAlert" role="alert" hidden></div>
+
+    <!-- ---------- تبويب 1: بيانات المستفيد ---------- -->
+    <div class="tab-pane is-active" id="paneForm" role="tabpanel" aria-labelledby="tabForm" tabindex="0">
+      <div class="alert alert-info" role="note">
+        <strong>تعليمات:</strong> حقل <em>اسم الأم الكامل</em> إجباري ويجب كتابته بالاسم الكامل.
+      </div>
+
+    <form id="beneficiaryForm" class="card form-card" novalidate>
+
+      <div class="card-head">
+        <h2>بيانات المستفيد</h2>
+        <span class="badge" id="editingBadge" hidden>وضع التعديل</span>
+        <span class="badge badge-muted" id="ownerBadge" hidden></span>
+      </div>
+
+      <div id="formAlert" class="alert alert-error" role="alert" hidden></div>
+
+      <fieldset class="section">
+        <legend><span class="legend-num">1</span> بيانات الطفل</legend>
+        <div class="grid">
+          <div class="field span-2">
+            <label for="childName">اسم الطفل <span class="req">*</span></label>
+            <input type="text" id="childName" autocomplete="off"
+                   placeholder="الاسم الثلاثي إن أمكن" required>
+            <small class="err" data-for="childName"></small>
+          </div>
+          <div class="field">
+            <label for="childId">رقم هوية الطفل</label>
+            <input type="text" id="childId" inputmode="numeric" placeholder="اختياري">
+          </div>
+          <div class="field">
+            <label for="gender">الجنس <span class="req">*</span></label>
+            <select id="gender" required>
+              <option value="">— اختر —</option>
+              <option value="Male">Male / ذكر</option>
+              <option value="Female">Female / أنثى</option>
+            </select>
+            <small class="err" data-for="gender"></small>
+          </div>
+          <div class="field">
+            <label for="dob">تاريخ الميلاد (DOB)</label>
+            <input type="date" id="dob">
+            <small class="err" data-for="dob"></small>
+          </div>
+          <div class="field">
+            <label for="category">
+              التصنيف (Neonate / Pedeatric)
+              <span class="auto-tag">تلقائي</span>
+            </label>
+            <input type="text" id="category" class="input-auto" readonly
+                   tabindex="-1" maxlength="1"
+                   aria-readonly="true" aria-describedby="categoryHint"
+                   placeholder="—">
+            <small class="hint" id="categoryHint">يُملأ تلقائياً: N إذا كان عمر الطفل 28 يوماً أو أقل عند الدخول، وإلا P</small>
+            <small class="err" data-for="category"></small>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="section">
+        <legend><span class="legend-num">2</span> بيانات ولي الأمر</legend>
+        <div class="grid">
+          <div class="field span-2">
+            <label for="motherName">اسم الأم الكامل <span class="req">*</span></label>
+            <input type="text" id="motherName" autocomplete="off"
+                   placeholder="مثال: سارة أحمد محمد" required>
+            <small class="err" data-for="motherName"></small>
+          </div>
+          <div class="field">
+            <label for="motherId">رقم هوية الأم</label>
+            <input type="text" id="motherId" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label for="fatherName">اسم الأب الكامل</label>
+            <input type="text" id="fatherName" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="fatherId">رقم هوية الأب</label>
+            <input type="text" id="fatherId" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label for="phone">رقم الهاتف</label>
+            <input type="tel" id="phone" inputmode="tel" placeholder="05XXXXXXXX">
+            <small class="err" data-for="phone"></small>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="section">
+        <legend><span class="legend-num">3</span> بيانات الخدمة</legend>
+        <div class="grid">
+          <div class="field span-2">
+            <label for="service">الخدمة المستلمة <span class="req">*</span></label>
+            <select id="service" required>
+              <option value="">— اختر —</option>
+              <option value="NICU">NICU / العناية المركزة</option>
+              <option value="Consultations">Consultations / استشارات</option>
+              <option value="SCBU">SCBU / وحدة رعاية حديثي الولادة</option>
+              <option value="B.F">B.F / رعاية حديثي الولادة</option>
+            </select>
+            <small class="err" data-for="service"></small>
+          </div>
+          <div class="field">
+            <label for="admitDate">تاريخ الزيارة / الدخول <span class="req">*</span></label>
+            <input type="date" id="admitDate" required>
+            <small class="err" data-for="admitDate"></small>
+          </div>
+          <div class="field">
+            <label for="dischargeDate">تاريخ الخروج</label>
+            <input type="date" id="dischargeDate">
+            <small class="err" data-for="dischargeDate"></small>
+          </div>
+          <div class="field">
+            <label for="treatmentDays">
+              أيام العلاج
+              <span class="auto-tag">محسوبة تلقائياً</span>
+            </label>
+            <input type="number" id="treatmentDays" class="input-auto"
+                   min="0" max="999" readonly tabindex="-1"
+                   aria-readonly="true" aria-describedby="treatmentDaysHint">
+            <small class="hint" id="treatmentDaysHint">يُملأ تلقائياً بعد إدخال تاريخ الدخول</small>
+            <small class="err" data-for="treatmentDays"></small>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="section">
+        <legend><span class="legend-num">4</span> التفاصيل الطبية</legend>
+        <div class="grid">
+          <div class="field">
+            <label for="weight">الوزن (كجم)</label>
+            <input type="number" id="weight" min="0.3" max="20" step="0.01" inputmode="decimal">
+            <small class="err" data-for="weight"></small>
+          </div>
+          <div class="field">
+            <label for="gestAge">العمر الحملي (أسبوع)</label>
+            <input type="number" id="gestAge" min="20" max="45" inputmode="numeric">
+            <small class="err" data-for="gestAge"></small>
+          </div>
+          <div class="field">
+            <label for="twin">توأم؟</label>
+            <select id="twin">
+              <option value="">— اختر —</option>
+              <option value="Yes">Yes / نعم</option>
+              <option value="No">No / لا</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="location">الموقع</label>
+            <select id="location">
+              <option value="">— اختر —</option>
+              <option>Gaza</option><option>Al Shati' Camp</option><option>Al Darraj</option>
+              <option>Al Nasser</option><option>AlSabra</option><option>Sheikh Radwan</option>
+              <option>Al Shujayia</option><option>Al Tufah</option><option>Gaza Old City</option>
+              <option>Tal Al Hawa</option><option>Southern Remal</option>
+              <option>Northern Remal</option><option>Al Zaitoun</option>
+            </select>
+          </div>
+          <div class="field span-2">
+            <label for="cause">سبب الدخول والحالة</label>
+            <textarea id="cause" rows="2" placeholder="مثال: ولادة مبكرة - حالة مستقرة"></textarea>
+          </div>
+          <div class="field span-2">
+            <label for="referrer">الجهة المحوِّلة</label>
+            <input type="text" id="referrer" placeholder="مثال: مستشفى الشفاء - مركز صحة">
+          </div>
+          <div class="field span-2">
+            <label for="disability">الإعاقة</label>
+            <input type="text" id="disability" placeholder="إن وُجدت، وإلا اكتب: لا يوجد">
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="btnSave">حفظ السجل</button>
+        <button type="button" class="btn btn-light" id="btnReset">مسح النموذج</button>
+        <button type="button" class="btn btn-light" id="btnCancelEdit" hidden>إلغاء التعديل</button>
+      </div>
+    </form>
+    </div>
+
+    <!-- ---------- تبويب 2: السجلات ---------- -->
+    <div class="tab-pane" id="paneRecords" role="tabpanel" aria-labelledby="tabRecords" tabindex="0" hidden>
+    <section class="card" id="recordsSection">
+      <div class="card-head">
+        <h2>السجلات المحفوظة</h2>
+        <span class="count" id="recordCount">0</span>
+        <span class="pending-badge" id="pendingBadge" hidden></span>
+        <span class="sync-dot" id="syncDot" title="متصل مباشرة"></span>
+      </div>
+
+      <div class="alert alert-info" id="orgViewBanner" role="note" hidden>
+        <strong>وضع العرض فقط:</strong> أنت تطّلع على بيانات منظمة أخرى —
+        التصدير والإحصاءات متاحة، لكن الإضافة والتعديل يعملان في منظمتك أنت فقط.
+      </div>
+
+      <div class="toolbar">
+        <input type="search" id="searchBox" class="search"
+               placeholder="بحث بالاسم أو رقم الهوية أو الهاتف...">
+        <select id="filterService" class="filter">
+          <option value="">كل الخدمات</option>
+          <option value="NICU">NICU</option>
+          <option value="Consultations">Consultations</option>
+          <option value="SCBU">SCBU</option>
+          <option value="B.F">B.F</option>
+        </select>
+        <select id="filterMine" class="filter">
+          <option value="">الجميع</option>
+          <option value="mine">سجلاتي فقط</option>
+        </select>
+        <!-- (016b) للمدير: استعراض ما يحتاج اعتماداً بضغطة واحدة -->
+        <select id="filterPending" class="filter" hidden>
+          <option value="">كل السجلات</option>
+          <option value="pending">بانتظار الاعتماد</option>
+        </select>
+        <!-- (016c) اعتماد كل معلّق المنظمة دفعة واحدة — يظهر في فلتر بانتظار الاعتماد -->
+        <button type="button" class="btn btn-primary" id="btnApproveAll" hidden>اعتماد الكل</button>
+        <select id="pageSize" class="filter" aria-label="عدد الصفوف في الصفحة">
+          <option value="25">25 صف</option>
+          <option value="50">50 صف</option>
+          <option value="100">100 صف</option>
+        </select>
+        <label class="svc-check deleted-toggle" id="deletedToggleBox" hidden>
+          <input type="checkbox" id="chkDeleted"> عرض المحذوفات
+        </label>
+      </div>
+
+      <div class="toolbar report-tools" id="reportTools">
+        <div class="field report-field">
+          <label for="reportDateField">التقارير حسب</label>
+          <select id="reportDateField" class="filter">
+            <option value="admit">تاريخ الدخول</option>
+            <option value="discharge">تاريخ الخروج</option>
+          </select>
+        </div>
+        <div class="field report-field">
+          <label for="reportFrom">من</label>
+          <input type="date" id="reportFrom" class="filter">
+        </div>
+        <div class="field report-field">
+          <label for="reportTo">إلى</label>
+          <input type="date" id="reportTo" class="filter">
+        </div>
+        <button type="button" class="btn btn-light" id="btnReportClear">مسح</button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="records" id="recordsTable">
+          <thead>
+            <tr>
+              <th>#</th><th>اسم الطفل</th><th>اسم الأم</th><th>الخدمة</th>
+              <th>تاريخ الدخول</th><th>المدة</th><th>أضافه</th><th>الحالة</th><th>إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="recordsBody"></tbody>
+        </table>
+        <p class="empty" id="emptyState" hidden>لا توجد سجلات بعد. املأ النموذج أعلاه للحفظ.</p>
+      </div>
+
+      <div class="pager" id="pager">
+        <span class="hint" id="pageInfo" style="flex: 1;">صفحة 1 من 1</span>
+        <button type="button" class="btn btn-light btn-sm" id="btnPrev">‹ السابق</button>
+        <button type="button" class="btn btn-light btn-sm" id="btnNext">التالي ›</button>
+      </div>
+
+      <div class="export-bar">
+        <button type="button" class="btn btn-primary" id="btnCustomReport">تقرير مخصص للطباعة</button>
+        <button type="button" class="btn btn-primary" id="btnExportCsv">تصدير CSV (Excel)</button>
+        <button type="button" class="btn btn-light" id="btnExportJson">نسخة احتياطية JSON</button>
+        <span class="spacer"></span>
+        <span class="hint" id="exportNote"></span>
+      </div>
+    </section>
+    </div>
+
+    <!-- ---------- تبويب 4: لوحة الإحصاءات (للمديرين) ---------- -->
+    <div class="tab-pane" id="paneStats" role="tabpanel" aria-labelledby="tabStats" tabindex="0" hidden>
+    <section class="card" id="statsPanel" hidden>
+      <div class="card-head">
+        <h2>إحصاءات المستفيدين</h2>
+        <span class="badge">مدير</span>
+      </div>
+
+      <p class="hint" style="margin: .5rem 0 0;">
+        تُحسب تلقائياً من السجلات المحمّلة — تتحدث فور حفظ أي سجل.
+        لتصفية النطاق استخدم حقلي التاريخ أدناه.
+      </p>
+
+      <div class="stats-toolbar">
+        <div class="field">
+          <label for="statsFrom">من تاريخ الدخول</label>
+          <input type="date" id="statsFrom">
+        </div>
+        <div class="field">
+          <label for="statsTo">إلى تاريخ الدخول</label>
+          <input type="date" id="statsTo">
+        </div>
+        <button type="button" class="btn btn-light" id="btnStatsClear">مسح التصفية</button>
+      </div>
+
+      <div class="stats-kpis">
+        <div class="kpi">
+          <span class="kpi-num" id="kpiTotal">0</span>
+          <span class="kpi-label">إجمالي السجلات</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-num" id="kpiThisMonth">0</span>
+          <span class="kpi-label">دخول هذا الشهر</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-num" id="kpiActive">0</span>
+          <span class="kpi-label">ما زالوا في العناية</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-num" id="kpiAvgDays">0</span>
+          <span class="kpi-label">متوسط أيام العلاج</span>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stats-card">
+          <h3 class="sub-head">أعداد المستفيدين حسب الشهر</h3>
+          <div class="hbar-chart" id="chartMonth" dir="ltr"
+               role="img" aria-label="مخطط أعمدة أفقي لأعداد المستفيدين حسب الشهر"></div>
+          <p class="empty" id="chartMonthEmpty" hidden>لا توجد سجلات في هذا النطاق.</p>
+        </div>
+
+        <div class="stats-col">
+          <div class="stats-card">
+            <h3 class="sub-head">حسب الخدمة</h3>
+            <div class="hbar-chart" id="chartService"
+                 role="img" aria-label="مخطط شريطي لأعداد المستفيدين حسب الخدمة"></div>
+            <p class="empty" id="chartServiceEmpty" hidden>لا توجد بيانات.</p>
+          </div>
+
+          <div class="stats-card">
+            <h3 class="sub-head">حسب التصنيف العمري</h3>
+            <div class="donut-row">
+              <div class="donut" id="chartCategory" role="img"
+                   aria-label="دائرة نسب التصنيف حديثي الولادة مقابل الأطفال"></div>
+              <div class="donut-legend" id="chartCategoryLegend"></div>
+            </div>
+            <p class="empty" id="chartCategoryEmpty" hidden>لا توجد بيانات — التصنيف يحتاج تاريخي الميلاد والدخول.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="comparePanel" hidden>
+      <div class="card-head">
+        <h2>مقارنة المنظمات</h2>
+        <span class="badge">مدير المنصة</span>
+      </div>
+
+      <p class="hint" style="margin: .5rem 0 0;">
+        تجمع إحصاءات كل المنظمات جنباً إلى جنب لمدير المنصة — بدون تصفية التاريخ.
+      </p>
+
+      <div class="compare-loading" id="compareLoading" hidden>
+        <span class="spinner" aria-hidden="true"></span> جارٍ جمع الإحصاءات…
+      </div>
+      <p class="empty" id="compareError" hidden></p>
+      <p class="empty" id="compareEmpty" hidden>لا توجد منظمات بعد — أنشئ منظمة من تبويب الإدارة أولاً.</p>
+
+      <div class="table-wrap compare-wrap">
+        <table class="records compare-table" id="compareTable">
+          <thead>
+            <tr id="compareHead">
+              <th class="row-label">المؤشر</th>
+            </tr>
+          </thead>
+          <tbody id="compareBody"></tbody>
+        </table>
+        <p class="empty" id="compareTableEmpty" hidden></p>
+      </div>
+
+      <div class="compare-grid" id="compareCharts" hidden></div>
+    </section>
+    </div>
+
+    <!-- ---------- تبويب 3: لوحة المدير ---------- -->
+    <div class="tab-pane" id="paneAdmin" role="tabpanel" aria-labelledby="tabAdmin" tabindex="0" hidden>
+    <section class="card" id="adminPanel" hidden>
+      <div class="card-head">
+        <h2>إدارة المستخدمين والصلاحيات</h2>
+        <span class="badge">مدير</span>
+      </div>
+
+      <div id="adminAlert" class="alert alert-error" role="alert" hidden></div>
+
+      <div class="admin-create">
+        <h3 class="sub-head">إضافة مستخدم جديد</h3>
+        <p class="admin-hint">
+          يُنشأ الحساب من هنا فقط — لا يمكن لأي مستخدم التسجيل بنفسه.
+          كلمة المرور 8 أحرف على الأقل، وسيستلمها المستخدم لاستخدامها عند أول دخول.
+        </p>
+
+        <form id="newUserForm" class="new-user-grid" novalidate>
+          <div class="field">
+            <label for="nuName">الاسم الكامل <span class="req">*</span></label>
+            <input type="text" id="nuName" autocomplete="off" placeholder="مثال: سارة أحمد">
+            <small class="err" data-for="nuName"></small>
+          </div>
+
+          <div class="field">
+            <label for="nuEmpId">اسم المستخدم <span class="req">*</span></label>
+            <input type="text" id="nuEmpId" autocomplete="off" dir="ltr"
+                   placeholder="sara.ahmed أو 402219876">
+            <small class="hint" id="nuEmailPreview">سيكون بريد الدخول: اسم-المستخدم@الكود.ps — حروف إنجليزية صغيرة وأرقام (ونقطة أو شرطة_) 3–20</small>
+            <small class="err" data-for="nuEmpId"></small>
+          </div>
+
+          <div class="field">
+            <label for="nuPassword">كلمة المرور <span class="req">*</span></label>
+            <input type="password" id="nuPassword" autocomplete="new-password"
+                   minlength="8" placeholder="8 أحرف على الأقل">
+            <small class="err" data-for="nuPassword"></small>
+          </div>
+
+          <div class="field">
+            <label for="nuRole">الصلاحية <span class="req">*</span></label>
+            <select id="nuRole">
+              <option value="staff">مُدخِل بيانات</option>
+              <option value="admin">مدير</option>
+              <option value="viewer" id="nuRoleViewer">مراقب (اطلاع وتقارير)</option>
+              <option value="super_admin" id="nuRoleSuper" hidden>مدير المنصة</option>
+            </select>
+            <small class="err" data-for="nuRole"></small>
+          </div>
+
+          <div class="field" id="nuOrgField" hidden>
+            <label for="nuOrg">المنظمة <span class="req">*</span></label>
+            <select id="nuOrg">
+              <option value="">— اختر المنظمة —</option>
+            </select>
+            <small class="hint">مدير المنصة يُسند المستخدم لأي منظمة؛ المدير العادي لمنظمته فقط.</small>
+            <small class="err" data-for="nuOrg"></small>
+          </div>
+
+          <div class="field" id="nuServicesField" hidden>
+            <label>الخدمات المسموحة للموظف</label>
+            <div class="svc-checks" id="nuServices">
+              <label class="svc-check"><input type="checkbox" value="NICU"> NICU / العناية المركزة</label>
+              <label class="svc-check"><input type="checkbox" value="Consultations"> Consultations / استشارات</label>
+              <label class="svc-check"><input type="checkbox" value="SCBU"> SCBU / وحدة رعاية</label>
+              <label class="svc-check"><input type="checkbox" value="B.F"> B.F / رعاية حديثي الولادة</label>
+            </div>
+            <small class="hint">يظهر فقط عند صلاحية «مُدخل بيانات» — اتركه فارغاً ليُدخل في كل الخدمات.</small>
+            <small class="err" data-for="nuServices"></small>
+          </div>
+
+          <div class="field nu-submit">
+            <button type="submit" class="btn btn-primary" id="btnNewUser">إنشاء الحساب</button>
+          </div>
+        </form>
+      </div>
+
+      <div id="orgsSection" hidden>
+        <div class="card-head sessions-head">
+          <h3 class="sub-head">المنظمات المسجّلة في النظام</h3>
+        </div>
+        <p class="admin-hint">
+          قسم مدير المنصة فقط: أنشئ منظمة جديدة ثم أنشئ حساب مديرها الأول.
+          كل منظمة تُدار بمعزل عن غيرها — مستخدموها وسجلاتها وإحصاءاتها.
+        </p>
+        <form id="newOrgForm" class="new-user-grid" novalidate>
+          <div class="field">
+            <label for="noName">اسم المنظمة <span class="req">*</span></label>
+            <input type="text" id="noName" autocomplete="off" placeholder="مثال: جمعية أصدقاء المريض">
+            <small class="err" data-for="noName"></small>
+          </div>
+          <div class="field">
+            <label for="noCode">كود المنظمة <span class="req">*</span></label>
+            <input type="text" id="noCode" autocomplete="off" dir="ltr" placeholder="pfbs">
+            <small class="hint">أحرف إنجليزية صغيرة وأرقام فقط (2–20) — يُستخدم في بريد موظفيها: الرقم@الكود.ps</small>
+            <small class="err" data-for="noCode"></small>
+          </div>
+          <div class="field nu-submit">
+            <button type="submit" class="btn btn-primary" id="btnNewOrg">إضافة منظمة</button>
+          </div>
+        </form>
+        <div class="table-wrap">
+          <table class="records orgs-table" id="orgsTable">
+            <thead>
+              <tr><th>المنظمة</th><th>الكود</th><th>المستخدمون</th><th>السجلات</th><th>أُنشئت</th></tr>
+            </thead>
+            <tbody id="orgsBody"></tbody>
+          </table>
+          <p class="empty" id="orgsEmpty" hidden>لا توجد منظمات بعد.</p>
+        </div>
+      </div>
+
+      <!-- (017) بطاقة إعدادات المدير: كانت داخل قسم مدير المنصة فقط —
+           فالمدير العادي لم يكن يصل إلى إعدادات حقول نموذجه أصلاً -->
+      <div class="staff-edit-toggle settings-card" id="settingsActionsBox" hidden>
+        <span class="settings-card-title">إعدادات المنظمة</span>
+        <div class="settings-actions">
+          <!-- (035) زر الترويسة لمدير المنظمة ومدير المنصة معاً — يظهر في أي منظمة يعرضها مدير المنصة -->
+          <button type="button" class="btn btn-light" id="btnFieldsSettings" hidden>إعدادات حقول نموذجي</button>
+          <button type="button" class="btn btn-light" id="btnBrandingSettings">تخصيص ترويسة التقارير</button>
+        </div>
+        <small class="hint">
+          حدد الحقول الإلزامية والاختيارية والمخفية في نموذج التسجيل،
+          وخصّص ترويسة التقارير المطبوعة باسم شعار منظمتك.
+        </small>
+      </div>
+
+      <div class="staff-edit-toggle settings-card" id="staffEditAllBox" hidden>
+        <label class="svc-check" for="chkStaffEditAll">
+          <input type="checkbox" id="chkStaffEditAll">
+          السماح لكل الموظفين بتعديل السجلات في جميع الخدمات
+        </label>
+        <small class="hint">
+          عند التفعيل يستطيع كل مُدخلي المنظمة الاطلاع على سجلات المنظمة كلها وتعديلها
+          — بدلاً من حصرهم بخدماتهم المسموحة فقط. الحذف يبقى للمدير أو مالك السجل،
+          والمراقب يبقى اطلاعاً فقط.
+        </small>
+      </div>
+
+      <!-- (025) مكدّس عمودي: المستخدمون أولاً ثم سجل النشاط أسفله بعرض كامل -->
+      <div class="admin-stack">
+        <div>
+          <h3 class="sub-head">المستخدمون</h3>
+          <div class="table-wrap">
+            <table class="records users-table" id="usersTable">
+              <thead>
+                <tr><th>الاسم</th><th>اسم المستخدم</th><th>الصلاحية</th><th>الخدمات</th><th>إجراء</th></tr>
+              </thead>
+              <tbody id="usersBody"></tbody>
+            </table>
+            <p class="empty" id="usersEmpty" hidden>لا يوجد مستخدمون بعد.</p>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="sub-head">سجل النشاط (آخر 50 عملية)</h3>
+          <div class="table-wrap">
+            <table class="records audit-table">
+              <thead>
+                <tr><th>النشاط</th><th>الطفل / حجم الدفعة</th><th>المنفّذ</th><th>التاريخ</th></tr>
+              </thead>
+              <tbody id="auditBody"></tbody>
+            </table>
+            <p class="empty" id="auditEmpty" hidden>لا يوجد نشاط مسجّل.</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="sessionsSection" hidden>
+        <div class="card-head sessions-head">
+          <h3 class="sub-head">الجلسات النشطة (آخر 50 عملية دخول)</h3>
+          <button type="button" class="btn btn-light" id="btnRefreshSessions">تحديث</button>
+        </div>
+        <p class="admin-hint">
+          إدارة عمليات تسجيل الدخول لفريق منظمتك: الجهاز، آخر ظهور، وإنهاء أي جلسة فوراً.
+          إنهاء الجلسة يجبر المستخدم على تسجيل الدخول من جديد.
+        </p>
+        <div class="table-wrap">
+          <table class="records sessions-table" id="sessionsTable">
+            <thead>
+              <tr><th>المستخدم</th><th>الجهاز / المتصفح</th><th>آخر ظهور</th><th>الحالة</th><th>إجراء</th></tr>
+            </thead>
+            <tbody id="sessionsBody"></tbody>
+          </table>
+          <p class="empty" id="sessionsEmpty" hidden>لا توجد جلسات مسجّلة بعد — تظهر تلقائياً عند تسجيل دخول الفريق.</p>
+        </div>
+      </div>
+    </section>
+    </div>
+
+  </main>
+
+  <!-- ========== إعدادات الحقول الإلزامية/الاختيارية (مدير المنظمة) ========== -->
+  <div id="fieldsDialog" class="report-overlay" hidden>
+    <div class="report-dialog report-dialog-sm fields-dialog">
+      <div class="report-dialog-head">
+        <h2>إعدادات حقول نموذج التسجيل</h2>
+        <button type="button" class="icon-btn" id="btnFieldsClose" aria-label="إغلاق">×</button>
+      </div>
+      <p class="admin-hint" style="padding: 0 1.1rem;">
+        حدد لكل حقل: <strong>إلزامي</strong> (يجب تعبئته)،
+        <strong>اختياري</strong> (يظهر ويمكن تجاوزه)،
+        <strong>مخفي</strong> (لا يظهر للمدخلين).
+      </p>
+      <div class="fields-list" id="fieldsList"></div>
+      <p class="alert alert-error" id="fieldsError" hidden></p>
+      <div class="report-actions">
+        <button type="button" class="btn btn-primary" id="btnFieldsSave">حفظ الإعدادات</button>
+        <button type="button" class="btn btn-light" id="btnFieldsCancel">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== نافذة التقرير المخصص (تظهر فوق التطبيق وتُطبع وحدها) ========== -->
+  <div id="reportBuilder" class="report-overlay" hidden>
+    <div class="report-dialog">
+      <div class="report-dialog-head">
+        <h2>تقرير مخصص</h2>
+        <button type="button" class="icon-btn" id="btnReportClose" aria-label="إغلاق">×</button>
+      </div>
+
+      <div class="report-form">
+        <div class="report-form-row">
+          <div class="field rp-wide">
+            <label for="rpTitle">عنوان التقرير</label>
+            <input type="text" id="rpTitle" value="تقرير المستفيدين">
+          </div>
+          <div class="field rp-narrow">
+            <label for="rpDateField">حسب تاريخ</label>
+            <select id="rpDateField">
+              <option value="admit">الدخول</option>
+              <option value="discharge">الخروج</option>
+            </select>
+          </div>
+        </div>
+        <div class="report-form-row">
+          <div class="field rp-narrow">
+            <label for="rpFrom">من</label>
+            <input type="date" id="rpFrom">
+          </div>
+          <div class="field rp-narrow">
+            <label for="rpTo">إلى</label>
+            <input type="date" id="rpTo">
+          </div>
+          <div class="field rp-narrow">
+            <label for="rpService">الخدمة</label>
+            <select id="rpService"></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- (031) تحكم أعمدة التقرير: chips قابلة للتبديل + اتجاه الطباعة -->
+      <div class="report-cols-control">
+        <div class="report-cols-head">
+          <strong>أعمدة التقرير</strong>
+          <span class="report-cols-count" id="rpColsCount"></span>
+          <span class="report-cols-spacer"></span>
+          <button type="button" class="btn btn-light btn-sm" id="rpColsAll">تحديد الكل</button>
+          <button type="button" class="btn btn-light btn-sm" id="rpColsBasic">الأساسيات</button>
+        </div>
+        <div class="report-cols" id="rpCols"></div>
+        <div class="report-orient">
+          <label>اتجاه الطباعة</label>
+          <select id="rpOrientation">
+            <option value="auto">تلقائي (حسب عدد الأعمدة)</option>
+            <option value="landscape">أفقي — لأكبر عدد من الأعمدة</option>
+            <option value="portrait">عمودي</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="report-preview-wrap">
+        <div class="report-sheet" id="reportSheet">
+          <header class="report-header">
+            <img class="report-logo" id="rpLogo" alt="" hidden>
+            <div class="report-head-text">
+              <h1 id="rpOrgName">—</h1>
+              <p class="report-meta" id="rpMeta"></p>
+            </div>
+          </header>
+          <div class="report-body">
+            <table class="records report-table">
+              <thead><tr id="rpHead"></tr></thead>
+              <tbody id="rpBody"></tbody>
+            </table>
+            <p class="empty" id="rpEmpty" hidden>لا توجد سجلات مطابقة للنطاق المحدد.</p>
+          </div>
+          <footer class="report-footer">
+            <span id="rpCount"></span>
+            <span id="rpNote"></span>
+          </footer>
+        </div>
+      </div>
+
+      <div class="report-actions">
+        <button type="button" class="btn btn-primary" id="btnReportPrint">طباعة / PDF</button>
+        <button type="button" class="btn btn-light" id="btnReportClose2">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== تخصيص الترويسة (للمدير) ========== -->
+  <div id="brandingDialog" class="report-overlay" hidden>
+    <div class="report-dialog report-dialog-sm">
+      <div class="report-dialog-head">
+        <h2>تخصيص ترويسة التقارير</h2>
+        <button type="button" class="icon-btn" id="btnBrandingClose" aria-label="إغلاق">×</button>
+      </div>
+      <div class="report-form">
+        <div class="field">
+          <label for="brLogo">رابط الشعار (URL)</label>
+          <input type="url" id="brLogo" dir="ltr" placeholder="https://example.org/logo.png">
+          <small class="hint">يُعرض أعلى يمين التقرير — اتركه فارغاً لإخفائه.</small>
+        </div>
+        <div class="field">
+          <label for="brName">اسم المنظمة المعروض</label>
+          <input type="text" id="brName" placeholder="جمعية أصدقاء المريض">
+        </div>
+        <div class="field">
+          <label for="brNote">ملاحظة أسفل التقرير</label>
+          <input type="text" id="brNote" placeholder="مثال: أُعدّ هذا التقرير من سجلات الوحدة — للاستخدام الرسمي">
+        </div>
+        <p class="alert alert-error" id="brandingError" hidden></p>
+        <div class="report-actions">
+          <button type="button" class="btn btn-primary" id="btnBrandingSave">حفظ</button>
+          <button type="button" class="btn btn-light" id="btnBrandingCancel">إلغاء</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer" hidden></footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+
+<!-- مكتبة Supabase محمّلة محلياً: لا تعتمد على الإنترنت أو CDN.
+     إن حذفت هذا الملف سيظهر تنبيه واضح بدل أخطاء في المتصفح. -->
+<!-- السكربتات بـ defer: التحميل متوازٍ مع تحليل الصفحة، والتنفيذ بالترتيب بعد
+     اكتمال التحليل وقبل DOMContentLoaded — فلا يكسر ترتيب التبعيات
+     (vendor ? config ? shared ? adapter ? db ? auth ? app)،
+     ويحسّن سرعة أول عرض لأن المتصفح لا يتوقف عند كل سكربت. -->
+<script defer src="js/vendor/supabase.min.js?v=43"></script>
+<script defer src="js/config.js?v=43"></script>
+<script defer src="js/shared.js?v=43"></script>
+<script defer src="js/adapter-supabase.js?v=43"></script>
+<script defer src="js/db.js?v=43"></script>
+<script defer src="js/auth.js?v=43"></script>
+<script defer src="js/app.js?v=43"></script>
+<script defer src="js/inline-helpers.js?v=43"></script>
+</body>
+</html>
